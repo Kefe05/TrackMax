@@ -3,6 +3,13 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
 const bcryptjs = require('bcryptjs');
+const dayjs = require('dayjs')
+
+const specificDate = dayjs('Monday, September 23, 2024 11:59 AM', 'dddd, MMMM D, YYYY h:mm A');
+const format = dayjs().format('dddd, MMMM D, YYYY');
+console.log(format)
+
+
 
 const app = express();
 
@@ -40,6 +47,77 @@ app.get('/productivity-tracker', (req, res) => {
   });
 });
 
+app.post('/completed-task', (req, res) =>{
+  const taskCompleted = 0;
+
+  
+
+  const values = [
+    req.body.taskName,
+    req.body.date
+  ]
+
+  // Save the current date
+  localStorage.setItem('savedDate', dayjs().format('dddd, MMMM D, YYYY'));
+
+// Retrieve the saved date
+  let savedDate = localStorage.getItem('savedDate');
+
+  if (values[1] === savedDate){
+    taskCompleted++;
+    localStorage.setItem('taskCompleted', taskCompleted);
+    const query  ='INSERT INTO TrackMax.taskCompleted(taskName, taskDate, taskNo) VALUES (?, ?, ?)'
+    
+    taskCompleted = localStorage.getItem('taskCompleted')
+  const allValues = [
+    values[0],
+    values[1],
+    taskCompleted
+  ] 
+
+
+    connection.query(query, allValues, (err, result) => {
+      if (err) return res.json({ message: 'Something unexpected has occurred: ' + err });
+      return res.json({ success: "User added successfully" });  
+    });
+  } else {
+    
+    taskCompleted = 0;
+
+    localStorage.setItem('savedDate',dayjs().format('dddd, MMMM D, YYYY' ));
+    let savedDate = localStorage.getItem('savedDate');
+
+    taskCompleted++;
+    taskCompleted = localStorage.setItem('taskCompleted',taskCompleted);
+    taskCompleted = localStorage.getItem('taskCompleted');
+    localStorage
+    const query  ='INSERT INTO TrackMax.taskCompleted(taskName, taskDate, taskNo) VALUES (?, ?, ?)'
+
+  const allValues = [
+    values[0],
+    values[1],
+    taskCompleted
+  ] 
+
+    connection.query(query, allValues, (err, result) => {
+      if (err) return res.json({ message: 'Something unexpected has occurred: ' + err });
+      return res.json({ success: "User added successfully" });  
+    });
+  }
+ 
+
+} )
+app.get('/expense-tracker', (req, res) => {
+  const query = 'SELECT * FROM TrackMax.expense';
+
+  connection.query(query, (err, result) => {
+    if (err) {
+      return res.json({ message: 'Something unexpected has occurred: ' + err });
+    }
+    return res.json(result);
+  });
+});
+
 app.delete('/deleteTask/:id', (req, res) => {
   const sql = 'DELETE FROM TrackMax.task WHERE id = ?'; // Remove `*` from DELETE
   const value = [req.params.id]; // Extract id from URL parameters
@@ -48,6 +126,17 @@ app.delete('/deleteTask/:id', (req, res) => {
     if (err) return res.json({ message: 'Something unexpected has occurred: ' + err });
     
     return res.json({ success: "User Task Deleted Successfully" });  
+  });
+});
+
+app.delete('/deleteExpense/:id', (req, res) => {
+  const sql = 'DELETE FROM TrackMax.expense WHERE id = ?'; // Remove `*` from DELETE
+  const value = [req.params.id]; // Extract id from URL parameters
+
+  connection.query(sql, value, (err, result) => {
+    if (err) return res.json({ message: 'Something unexpected has occurred: ' + err });
+    
+    return res.json({ success: "User Expense Deleted Successfully" });  
   });
 });
 
@@ -115,6 +204,22 @@ app.post('/addTask', (req, res) => { // Corrected order: (req, res)
   connection.query(sql, values, (err, result) => {
     if (err) return res.json({ message: 'Something unexpected has occurred: ' + err });
     return res.json({ success: "New Task added successfully" });  
+  });
+  
+});
+
+app.post('/addExpense', (req, res) => { // Corrected order: (req, res)
+  const sql = "INSERT INTO TrackMax.expense(category, amount, dueDate) VALUES (?, ?, ?)"; // Adjust query for multiple values
+ 
+  const values = [
+    req.body.category,
+    req.body.amount,
+    req.body.dueDate,
+  ];
+
+  connection.query(sql, values, (err, result) => {
+    if (err) return res.json({ message: 'Something unexpected has occurred: ' + err });
+    return res.json({ success: "New Expense added successfully" });  
   });
   
 });

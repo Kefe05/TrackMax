@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
-import { expense, expenseData,pendingExpenseData } from '../charts/data';
+import { expense as expenseDataList, expenseData,pendingExpenseData } from '../charts/data';
 import BarChart from "../charts/bar";
 import PieChart from "../charts/piechart";
 import Task from "../Task/task";
+import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
 
 function Expense(){
+  const [expense, setExpense] = useState([{
+    id: 1,
+    category: 'Rent',
+    amountSpent: 1200,
+  }])
+
+  const navigate = useNavigate();
   const [newChart, setNewChart] = useState({
     labels: [], // Initially empty arrays
     datasets: [
@@ -23,7 +32,7 @@ function Expense(){
   });
   useEffect(() => {
     setNewChart({
-      labels: expense.map((data) => data.month),
+      labels: expenseDataList.map((data) => data.month),
       datasets: [
         {
           label: 'Expenses $',
@@ -76,30 +85,66 @@ function Expense(){
     });
   }, []);
 
- 
+  useEffect(() => {
+    axios.get("http://localhost:5000/expense-tracker")
+      .then((res) => {
+        if (res.data.length > 0) {
+          setExpense(res.data);
+        }
+      })
+      .catch((error) => console.error("Error:", error));
+  }, []);
+
+  const handleDelete = (id) => {
+    axios
+      .delete(`http://localhost:5000/deleteExpense/${id}`)
+      .then((res) => {
+        console.log(res);
+        // Update the state to remove the deleted task
+        setExpense((prevTasks) => prevTasks.filter((expense) => expense.id !== id));
+      })
+      .catch((err) => console.log(err));
+  };
+
+  const handleEdit = (id) =>{
+    handleDelete(id);
+    navigate('/add-new-expense')
+  }
+  
 
   // Update chart data on component mount
    // Empty dependency array to run only on mount
 
   return(
-    <div className="p-5 w-8/12 m-auto bg-white">
+    <div className="p-5 w-8/12 h-screen m-auto bg-white">
       <h2 className="font-bold text-3xl">Daily Expense</h2>
       <div className="w-full">
-        {/* <div className="w-full p-5 ">
-          <BarChart data={newChart}/>
-        </div> */}
         <div className="w-8/12 p-5 m-auto">
-
           <PieChart data={pieData}/>
         </div>
       </div>
       <div className="flex flex-col gap-6">
         {
-          pendingExpenseData.map((data, index) => (
-            <Task key={index} name={data.category} detail={data.amountDue} />
+          expense.map((data) => (
+            <Task 
+            key={data.id}
+            id={data.id}
+             name={data.category} 
+             detail={data.amount}
+             handleDelete={handleDelete}
+             handleEdit={handleEdit} />
           ))
         }
       </div>
+      <div className=" flex justify-end">
+      <Link
+        to="/add-new-expense"
+        className="bg-orange-400 p-4 mt-5 rounded-xl text-white"
+        >
+          Add Expense
+        </Link>
+      </div>
+
     </div>
   )
 }

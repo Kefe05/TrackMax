@@ -4,17 +4,28 @@ import BarChart from "../charts/bar";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { tasksCompleted } from "../charts/data";
+import dayjs, { Dayjs } from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime'
 
 function Productivity() {
+  // Extend Day.js with the relativeTime plugin
+  dayjs.extend(relativeTime);
+  // Get the time relative to now
+  const commentTime = dayjs().format('dddd, MMMM D, YYYY')
+
   const navigate = useNavigate();
-  const [task, setTask] = useState([
+  const [completedTask, setCompletedTask] =useState([{
+    taskName : '',
+    date: taskTime,
+  }])
+
+ const [task, setTask] = useState([
     {
       id: 1,
       name: "Guest",
       details: "This is how to register a guest",
     },
   ]);
-  
   const [newChart, setNewChart] = useState({
     labels: [],
     datasets: [
@@ -74,6 +85,17 @@ function Productivity() {
 
   }
 
+  const handleCompleted = () => {
+    axios.post('http://localhost:5000/completed-task', completedTask)
+    .then((res) => {
+      console.log(res);
+    })
+    .catch((err) => {
+      console.log(err)
+    })
+  }
+  
+
   return (
     <div className="p-5 w-8/12 m-auto">
       <h2 className="font-bold text-3xl p-2 rounded">Your Daily Task</h2>
@@ -88,7 +110,9 @@ function Productivity() {
             detail={task.details}
             id={task.id}
             handleDelete={handleDelete}
-            handleEdit={handleEdit} // Pass the delete handler as a prop
+            handleEdit={handleEdit}
+            handleCompleted={handleCompleted}
+             // Pass the delete handler as a prop
           />
         ))}
       </div>
@@ -101,6 +125,7 @@ function Productivity() {
         </Link>
         <button className="bg-orange-400 p-4 rounded-xl text-white">Shuffle</button>
       </div>
+      <p>{commentTime}</p>
     </div>
   );
 }
