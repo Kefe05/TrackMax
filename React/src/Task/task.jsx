@@ -6,7 +6,7 @@ function Task({ name, detail, id, handleDelete, handleEdit, handleCompleted }) {
   return (
     <div className="flex justify-between items-center">
       <div className="flex gap-4">
-        <input type="checkbox"  onChange={() => handleCompleted(id)}/>
+        <input type="checkbox"  onChange={() => handleCompleted(id,name)}/>
         <div className="flex flex-col">
           <span className="font-semibold text-xl">{name}</span>
           <span>{detail}</span>
