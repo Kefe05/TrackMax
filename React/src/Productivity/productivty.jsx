@@ -2,31 +2,35 @@ import { useState, useEffect, useRef } from "react";
 import Task from "../Task/task";
 import BarChart from "../charts/bar";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios, { all } from "axios";
 import { tasksCompleted } from "../charts/data";
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
 function Productivity() {
-  // Extend Day.js with the relativeTime plugin
-  dayjs.extend(relativeTime);
+  // Set taskTime for today dynamically
   
-  // Set the taskTime for today
-  const taskTime = dayjs().format('dddd, MMMM D, YYYY');
-  localStorage.setItem('taskTime', taskTime);
-  
+  let [no,setNo] = useState(0);
+  let [no1,setNo1]  = useState(0);
+  let[no2, setNo2] = useState(0);
   // State hooks
   const navigate = useNavigate();
   const [completedValue, setCompletedValue] = useState([]);
   const format = useRef(localStorage.getItem('taskTime'));
   
-  const [allTaskCompleted, setAllTaskCompleted] = useState([
-    {
-      id: 9,
-      date: "Wednesday, September 25, 2024",
-      taskCompleted: completedValue.length,
+  const [allTaskCompleted, setAllTaskCompleted] = useState([]);
+
+  class newTask{
+    constructor(date, no){
+      this.date = date,
+      this.no = no
     }
-  ]);
+  }
+  
+
+
+  
+
 
   const [task, setTask] = useState([
     {
@@ -52,17 +56,28 @@ function Productivity() {
 
   const [completedTask, setCompletedTask] = useState({
     taskName: '',
-    date: taskTime,
+    date: dayjs().format('dddd, MMM D, yyyy'),
   });
+
+  // Abstracted function to fetch completed tasks
+  const fetchCompletedTasks = () => {
+    return fetch('http://localhost:5000/completed-task', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+      },
+    }).then(res => res.json());
+  };
 
   // Effect to set up chart data
   useEffect(() => {
     setNewChart({
-      labels: tasksCompleted.map((data) => data.day),
+      labels: allTaskCompleted.map((task) => task.date), // Use date from completed tasks
       datasets: [
         {
-          label: "Completed Task",
-          data: allTaskCompleted.map((data) => data.taskCompleted),
+          label: "Completed Task per day",
+          data: allTaskCompleted.map((task) => task.no), // Use task completion count
           backgroundColor: "rgba(75,192,192,0.2)",
           borderColor: "rgba(75,192,192,1)",
           borderWidth: 1,
@@ -70,7 +85,8 @@ function Productivity() {
         },
       ],
     });
-  }, [allTaskCompleted]);
+  }, [allTaskCompleted]); // This will update the chart data whenever allTaskCompleted changes
+  
 
   // Fetch tasks from the server
   useEffect(() => {
@@ -85,35 +101,37 @@ function Productivity() {
 
   // Fetch completed tasks
   useEffect(() => {
-    fetch('http://localhost:5000/completed-task', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-      },
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.length > 0) {
-        setCompletedValue(data);
-        
-        format.current = localStorage.getItem('taskTime');
-        const lastTask = data[data.length - 1];
-        if (lastTask.date === format.current) {
-          // Use setAllTaskCompleted to update state
-          setAllTaskCompleted(prevState => {
-            const updatedState = [...prevState];
-            updatedState[updatedState.length - 1] = {
-              ...updatedState[updatedState.length - 1],
-              taskCompleted: data.length
-            };
-            return updatedState;
-          });
+    fetchCompletedTasks()
+      .then(data => {
+        if (data.length > 0) {
+          setCompletedValue(data);
         }
-      }
-    })
-    .catch(error => console.error('Error:', error));
+  
+        const list1 = []
+        const list2 = []
+        const list3 = []
+     
+        data.forEach((task) => {
+          if(dayjs(task.date, 'dddd, MMM D, YYYY').isSame(dayjs().subtract(2, 'day'), 'day')){
+            list1.push(task);
+          } else if(dayjs(task.date, 'dddd, MMM D, YYYY').isSame(dayjs().subtract(1, 'day'), 'day')){
+            list2.push(task);
+          } else {
+            list3.push(task);
+          }
+        });
+  
+        const newTask1 = new newTask(dayjs().subtract(2,'day').format('dddd, MMM D, YYYY'), list1.length);
+        const newTask2 = new newTask(dayjs().subtract(1,'day').format('dddd, MMM D, YYYY'), list2.length);
+        const newTask3 = new newTask(dayjs().format('dddd, MMM D, YYYY'), list3.length);
+  
+        setAllTaskCompleted([ newTask1, newTask2, newTask3]);
+      })
+      .catch(error => console.error('Error:', error));
   }, []);
+  
+  localStorage.setItem('items', allTaskCompleted)
+  
 
   // Handle Task Deletion
   const handleDelete = (id) => {
@@ -124,49 +142,40 @@ function Productivity() {
       .catch((err) => console.log(err));
   };
 
-  // Handle Edit Task
-  const handleEdit = (id) => {
-    handleDelete(id);
-    navigate('/add-new-task');
-  };
-
   // Handle marking a task as completed
   const handleCompleted = (id, name) => {
     const updatedTask = { ...completedTask, taskName: name };
     setCompletedTask(updatedTask);
-  
+
     axios.post('http://localhost:5000/completed-task', updatedTask)
       .then(res => {
-        console.log(res);
-  
-        fetch('http://localhost:5000/completed-task', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache',
-          },
-        })
-          .then(res => res.json())
+        fetchCompletedTasks()
           .then(data => {
             const today = localStorage.getItem('taskTime');
             const completedToday = data.filter(task => task.date === today);
+
+            const list1 = []
+        const list2 = []
+        const list3 = []
+     
+        completedValue.forEach((task) => {
+          if(dayjs(task.date, 'dddd, MMM D, YYYY').isSame(dayjs().subtract(2, 'day'), 'day')){
+            list1.push(task);
+          } else if(dayjs(task.date, 'dddd, MMM D, YYYY').isSame(dayjs().subtract(1, 'day'), 'day')){
+            list2.push(task);
+          } else {
+            list3.push(task);
+          }
+        });
   
-            setAllTaskCompleted(prevState => {
-              const updatedState = [...prevState];
-              if (completedToday.length > 0) {
-                updatedState[updatedState.length - 1] = {
-                  ...updatedState[updatedState.length - 1],
-                  taskCompleted: completedToday.length,
-                };
-              } else {
-                updatedState.push({
-                  id: updatedState.length + 1,
-                  date: today,
-                  taskCompleted: completedToday.length,
-                });
-              }
-              return updatedState;
-            });
+        const newTask1 = new newTask(dayjs().subtract(2,'day').format('dddd, MMM D, YYYY'), list1.length);
+        const newTask2 = new newTask(dayjs().subtract(1,'day').format('dddd, MMM D, YYYY'), list2.length);
+        const newTask3 = new newTask(dayjs().format('dddd, MMM D, YYYY'), list3.length);
+
+
+
+  
+           setAllTaskCompleted([ newTask1, newTask2, newTask3]);
           })
           .catch(error => console.error('Error fetching updated tasks:', error));
       })
@@ -174,7 +183,6 @@ function Productivity() {
   
     handleDelete(id);
   };
-  
 
   return (
     <div className="p-5 w-[60%] m-auto">
@@ -190,7 +198,6 @@ function Productivity() {
             detail={details}
             id={id}
             handleDelete={handleDelete}
-            handleEdit={handleEdit}
             handleCompleted={handleCompleted}
           />
         ))}
@@ -201,8 +208,20 @@ function Productivity() {
         </Link>
         <button className="bg-orange-400 p-4 rounded-xl text-white">Shuffle</button>
       </div>
+      <div className="allTask">
+        {
+          completedValue.map((task) => {
+           <div className="task" key={task.id}>
+             <p>{task.date}</p>
+            <p>{task.taskName}</p>
+            <p>{task.taskCompleted}</p>
+           </div>
+          })
+        }
+      </div>
     </div>
   );
 }
+
 
 export default Productivity;
